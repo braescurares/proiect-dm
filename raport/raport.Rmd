@@ -315,3 +315,39 @@ weights = sgd(feature_matrix[, -1],
 |lm    |0.0000      |-0.1490     |0.7885   |
 
 It may be observed that the parameters outputs from a SGD are not exactly the same as the regression equation output but it is very close. In fact, SGD hovers around local minima without actually converging. For most practical purposes, this suffices when we are using large data sets.
+
+## 7 Ridge Regression
+
+Adding higher degree polynomials to a regression equation led to overfitting. Overfitting occurs when the model fits the training data all too well and does not generalize to unseed data.
+
+Overfitting can also happen if there are too many predictor variables in the regression equation or, if there are too few observations. Overfitting is also associated with very large estimated parameters (weights) $\hat w$.
+
+Therefore, we want to seek balance between
+
+- How well our model fits the data (measure of fit)
+- Magnitude of the coefficients
+
+The total cost of the model is therefore a combination of the measure of fit and the measure of the magnitude of the coefficients. The measure of fit is represented by the *RSS* and a small *RSS* is indicative of a good fit. The measure of magnitude of the coefficients is either the sum of the absolute value of the coefficients $l_1$ norm or, the sum of the squared values of the coefficients $l_2$ norm. They are represented as follows:
+$$
+||w_0|| + ||w_1|| + ... + ||w_n|| = \sum_{j=0}^{n} ||w_j|| = ||w||_1 (l_1\ Norm)
+$$
+
+$$
+w_0^2 + w_1^2 + ... + w_n^2 = \sum_{j=0}^{n} w_j^2 = ||w||_2^2 (l2\ Norm)
+$$
+
+In ridge regression, we consider the $l_2$ Norm as the measure of the magnitude of the coefficients. The total cost is therefore
+
+$$
+Total\ Cost = RSS(w) + ||w||_2^2
+$$
+
+Our objective in ridge regression is to find $\hat w$ so as to minimize the total cost of the above formula. The balance between the fit and the magnitude is achieved by introducing a tuning parameter $\lambda$ so that
+
+$$
+Total\ Cost = RSS(w) + \lambda||w||_2^2
+$$
+If $\lambda = 0 \rightarrow$ reduces to minimizing $RSS(w) \rightarrow \hat w^{Least\ Squares(LS)}$.  
+If $\lambda = \infty \rightarrow$, total cost is $\infty$ when $(\hat w \neq 0)$ and total cost is 0 when $(\hat w = 0)$.  
+If $\lambda$ is in between $\rightarrow 0 \leq ||\hat w||_2^2 \leq ||\hat w^{(LS)}||_2^2$.  
+

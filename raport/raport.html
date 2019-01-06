@@ -362,7 +362,7 @@ gradient_descent &lt;- gdescent(f, grad_f, X, y, alpha = 10e-5, iter = 10e7, tol
 <p>In the <strong>Batch Gradient Descent</strong> algorithm described above, the algorithm sums up the gradient terms over all the <em>m</em> cases in the data before modifying the parameters. For a large size data set say, <span class="math inline">\(m=1e20\)</span>, this would take a long time to converge. In such cases, stochastic gradient descent is a very good option.</p>
 </div>
 <div id="writing-the-stochastic-gradient-descent-application" class="section level3">
-<h3>Writing the Stochastic Gradient Descent Application</h3>
+<h3>4.5 Writing the Stochastic Gradient Descent Application</h3>
 <p>In stochastic gradient descent, the algorithm selects a single observation at random (instead of sweeping through all the cases, in batch gradient descent), from the data set and starts modifying the parameters right away. This process is repeated and the weights modified, till it has worked through the entire data set. It then repeats the above procedure for the number of iterations defined.</p>
 <pre class="r"><code>sgd &lt;- function(x, y, betas, iters, lambda) {
   beta&lt;-as.matrix(cbind(rep(betas[1], iters),
@@ -427,7 +427,34 @@ weights = sgd(feature_matrix[, -1],
 </tr>
 </tbody>
 </table>
+<p>It may be observed that the parameters outputs from a SGD are not exactly the same as the regression equation output but it is very close. In fact, SGD hovers around local minima without actually converging. For most practical purposes, this suffices when we are using large data sets.</p>
 </div>
+</div>
+<div id="ridge-regression" class="section level2">
+<h2>7 Ridge Regression</h2>
+<p>Adding higher degree polynomials to a regression equation led to overfitting. Overfitting occurs when the model fits the training data all too well and does not generalize to unseed data.</p>
+<p>Overfitting can also happen if there are too many predictor variables in the regression equation or, if there are too few observations. Overfitting is also associated with very large estimated parameters (weights) <span class="math inline">\(\hat w\)</span>.</p>
+<p>Therefore, we want to seek balance between</p>
+<ul>
+<li>How well our model fits the data (measure of fit)</li>
+<li>Magnitude of the coefficients</li>
+</ul>
+<p>The total cost of the model is therefore a combination of the measure of fit and the measure of the magnitude of the coefficients. The measure of fit is represented by the <em>RSS</em> and a small <em>RSS</em> is indicative of a good fit. The measure of magnitude of the coefficients is either the sum of the absolute value of the coefficients <span class="math inline">\(l_1\)</span> norm or, the sum of the squared values of the coefficients <span class="math inline">\(l_2\)</span> norm. They are represented as follows: <span class="math display">\[
+||w_0|| + ||w_1|| + ... + ||w_n|| = \sum_{j=0}^{n} ||w_j|| = ||w||_1 (l_1\ Norm)
+\]</span></p>
+<p><span class="math display">\[
+w_0^2 + w_1^2 + ... + w_n^2 = \sum_{j=0}^{n} w_j^2 = ||w||_2^2 (l2\ Norm)
+\]</span></p>
+<p>In ridge regression, we consider the <span class="math inline">\(l_2\)</span> Norm as the measure of the magnitude of the coefficients. The total cost is therefore</p>
+<p><span class="math display">\[
+Total\ Cost = RSS(w) + ||w||_2^2
+\]</span></p>
+<p>Our objective in ridge regression is to find <span class="math inline">\(\hat w\)</span> so as to minimize the total cost of the above formula. The balance between the fit and the magnitude is achieved by introducing a tuning parameter <span class="math inline">\(\lambda\)</span> so that</p>
+<p><span class="math display">\[
+Total\ Cost = RSS(w) + \lambda||w||_2^2
+\]</span> If <span class="math inline">\(\lambda = 0 \rightarrow\)</span> reduces to minimizing <span class="math inline">\(RSS(w) \rightarrow \hat w^{Least\ Squares(LS)}\)</span>.<br />
+If <span class="math inline">\(\lambda = \infty \rightarrow\)</span>, total cost is <span class="math inline">\(\infty\)</span> when <span class="math inline">\((\hat w \neq 0)\)</span> and total cost is 0 when <span class="math inline">\((\hat w = 0)\)</span>.<br />
+If <span class="math inline">\(\lambda\)</span> is in between <span class="math inline">\(\rightarrow 0 \leq ||\hat w||_2^2 \leq ||\hat w^{(LS)}||_2^2\)</span>.</p>
 </div>
 
 

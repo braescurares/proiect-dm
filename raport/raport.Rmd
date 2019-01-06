@@ -184,3 +184,134 @@ regression_gradient_descent = function(feature_matrix, output,
 }
 ```
 
+Assuming there is a dataset that contains *price*, *bedrooms* and *sqft_linving* information about houses.
+
+```{r, eval=FALSE}
+kc_house_data <- read.csv(paste(file_path, "kc_house_data.csv", sep = ""))
+house_data <- kc_house_data[, c("price", "bedrooms", "sqft_living")]
+```
+
+The next step is to partition the data set into training and test data sets.
+
+```{r, eval=FALSE}
+set.seed(22)
+inTrain <- createDataPartition(house_data$price, p = 0.5, list = F)
+
+house_train_data = house_data[inTrain,]
+house_test_data = house_data[-inTrain,]
+```
+
+Now, let's define the *features* and the *respone*.
+
+```{r, eval=FALSE}
+my_features <- c("bedrooms", "sqft_living")
+my_output <- "price"
+```
+
+Construct the feature matrix, the response matrix and set the initial weights, step size and tolerence.
+
+```{r, eval=FALSE}
+feature_matrix = data_matrix(house_train_data, my_features, my_output)[[1]]
+output_matrix = data_matrix(house_train_data, my_features, my_output)[[2]]
+
+initial_weights = c(0, 0, 0)
+step_size = 0.01
+tolerance = 1e-5
+```
+
+Finally, the gradient descent algorithm described above returns the feature weigths.
+
+```{r, eval=FALSE}
+weights = regression_gradient_descent(feature_matrix, output_matrix, initial_weights, step_size, tolerance)
+```
+
+We can also cross-check obtained values with OLS regression in R.
+
+```{r, eval=FALSE}
+scaled_house_data <- data.frame(scale(house_train_data))
+lm(price ~ ., data = scaled_house_data)$coef
+```
+
+To ease our lives, R has *gdescent* function that can be found in the **gettingtothebottom** package. It allows us to define the objective function *f*, the gradient of the objective function *grad_f*, feature matrix *X*, the response vector *y*, the step size *alpha*, the number of iterations *iter* and the tolerance.
+
+```{r, eval=FALSE}
+library(gettingtothebottom)
+X <- as.matrix(feature_matrix[, -1])
+y <- as.vector(output_matrix)
+
+# initialise the weights
+b <- c(0, 0, 0)
+
+# define the objective function
+f <- function(X, y, b) {
+  (1/2) * norm(y - X %*% b, "F")^2
+}
+
+# Calculate gradient of the objective function
+grad_f <- function(X, y, b) {
+  t(X) %*% (X %*% b - y)
+}
+
+gradient_descent <- gdescent(f, grad_f, X, y, alpha = 10e-5, iter = 10e7, tol = 1e-5)
+```
+
+After running code from above, it turns out we get the same results as with our linear regression algorithm. Convergence depends on the values of the step size and the tolerance. A higher value of step size may lead to non-convergence and a lowert tolerance value might take a long time to converge. A general thumb rule is to start with a higher step size and a low convergence criterion and keep adjusting them.
+
+In the **Batch Gradient Descent** algorithm described above, the algorithm sums up the gradient terms over all the *m* cases in the data before modifying the parameters. For a large size data set say, $m=1e20$, this would take a long time to converge. In such cases, stochastic gradient descent is a very good option.
+
+### 4.5 Writing the Stochastic Gradient Descent Application
+
+In stochastic gradient descent, the algorithm selects a single observation at random (instead of sweeping through all the cases, in batch gradient descent), from the data set and starts modifying the parameters right away. This process is repeated and the weights modified, till it has worked through the entire data set. It then repeats the above procedure for the number of iterations defined.
+
+```{r, eval=FALSE}
+sgd <- function(x, y, betas, iters, lambda) {
+  beta<-as.matrix(cbind(rep(betas[1], iters),
+                        rep(betas[2], iters),
+                        rep(betas[3],iters))
+                  )
+  for (i in 2:iters) {
+    m <- nrow(x)
+    sample_num <- sample.int(m, 1)
+    row_x <- x[sample_num,]
+    row_y <- y[sample_num]
+    
+    beta[i, 1] <- beta[i-1, 1] - (lambda*(beta[i-1, 1] +
+                                  beta[i-1, 2]*row_x[[1]] +
+                                  beta[i-1, 3]*row_x[[2]] -
+                                  row_y)
+                                  )
+    beta[i, 2] <- beta[i-1, 2] - (lambda*(beta[i-1, 1] +
+                                          beta[i-1, 2]*row_x[[1]] +
+                                          beta[i-1,3]*row_x[[2]] -
+                                          row_y)*row_x[[1]]
+                                  )
+    beta[i, 3] <- beta[i-1,3] - lambda*(beta[i-1, 1] +
+                                        beta[i-1, 2]*row_x[[1]] +
+                                        beta[i-1,3]*row_x[[2]] -
+                                        row_y)*row_x[[2]]
+  }
+  
+  return(beta);
+}
+```
+
+Let's apply the above function to our *feature_matrix* and compare the results with the standard multiple regression function in R
+
+```{r, eval=FALSE}
+betas = c(0, 0, 0)
+iters = 3000
+lambda = 0.0001
+weights = sgd(feature_matrix[, -1],
+              output_matrix,
+              betas,
+              iters = iters,
+              lambda = lambda
+              )
+```
+
+|      |Intercept   |sqft_living |Bedrooms |
+|:----:|:----------:|:----------:|:-------:|
+|SGD   |0.0028      |0.0704      |0.1802   |
+|lm    |0.0000      |-0.1490     |0.7885   |
+
+It may be observed that the parameters outputs from a SGD are not exactly the same as the regression equation output but it is very close. In fact, SGD hovers around local minima without actually converging. For most practical purposes, this suffices when we are using large data sets.

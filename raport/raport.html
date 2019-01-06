@@ -315,6 +315,118 @@ w_j^{(t+1)} &amp;\leftarrow w_j^{(t)} + 2\eta H^{\top}(y - Hw^{(t)}) \\
   }
   return(list(weights = weights, Iters = i))
 }</code></pre>
+<p>Assuming there is a dataset that contains <em>price</em>, <em>bedrooms</em> and <em>sqft_linving</em> information about houses.</p>
+<pre class="r"><code>kc_house_data &lt;- read.csv(paste(file_path, &quot;kc_house_data.csv&quot;, sep = &quot;&quot;))
+house_data &lt;- kc_house_data[, c(&quot;price&quot;, &quot;bedrooms&quot;, &quot;sqft_living&quot;)]</code></pre>
+<p>The next step is to partition the data set into training and test data sets.</p>
+<pre class="r"><code>set.seed(22)
+inTrain &lt;- createDataPartition(house_data$price, p = 0.5, list = F)
+
+house_train_data = house_data[inTrain,]
+house_test_data = house_data[-inTrain,]</code></pre>
+<p>Now, let’s define the <em>features</em> and the <em>respone</em>.</p>
+<pre class="r"><code>my_features &lt;- c(&quot;bedrooms&quot;, &quot;sqft_living&quot;)
+my_output &lt;- &quot;price&quot;</code></pre>
+<p>Construct the feature matrix, the response matrix and set the initial weights, step size and tolerence.</p>
+<pre class="r"><code>feature_matrix = data_matrix(house_train_data, my_features, my_output)[[1]]
+output_matrix = data_matrix(house_train_data, my_features, my_output)[[2]]
+
+initial_weights = c(0, 0, 0)
+step_size = 0.01
+tolerance = 1e-5</code></pre>
+<p>Finally, the gradient descent algorithm described above returns the feature weigths.</p>
+<pre class="r"><code>weights = regression_gradient_descent(feature_matrix, output_matrix, initial_weights, step_size, tolerance)</code></pre>
+<p>We can also cross-check obtained values with OLS regression in R.</p>
+<pre class="r"><code>scaled_house_data &lt;- data.frame(scale(house_train_data))
+lm(price ~ ., data = scaled_house_data)$coef</code></pre>
+<p>To ease our lives, R has <em>gdescent</em> function that can be found in the <strong>gettingtothebottom</strong> package. It allows us to define the objective function <em>f</em>, the gradient of the objective function <em>grad_f</em>, feature matrix <em>X</em>, the response vector <em>y</em>, the step size <em>alpha</em>, the number of iterations <em>iter</em> and the tolerance.</p>
+<pre class="r"><code>library(gettingtothebottom)
+X &lt;- as.matrix(feature_matrix[, -1])
+y &lt;- as.vector(output_matrix)
+
+# initialise the weights
+b &lt;- c(0, 0, 0)
+
+# define the objective function
+f &lt;- function(X, y, b) {
+  (1/2) * norm(y - X %*% b, &quot;F&quot;)^2
+}
+
+# Calculate gradient of the objective function
+grad_f &lt;- function(X, y, b) {
+  t(X) %*% (X %*% b - y)
+}
+
+gradient_descent &lt;- gdescent(f, grad_f, X, y, alpha = 10e-5, iter = 10e7, tol = 1e-5)</code></pre>
+<p>After running code from above, it turns out we get the same results as with our linear regression algorithm. Convergence depends on the values of the step size and the tolerance. A higher value of step size may lead to non-convergence and a lowert tolerance value might take a long time to converge. A general thumb rule is to start with a higher step size and a low convergence criterion and keep adjusting them.</p>
+<p>In the <strong>Batch Gradient Descent</strong> algorithm described above, the algorithm sums up the gradient terms over all the <em>m</em> cases in the data before modifying the parameters. For a large size data set say, <span class="math inline">\(m=1e20\)</span>, this would take a long time to converge. In such cases, stochastic gradient descent is a very good option.</p>
+</div>
+<div id="writing-the-stochastic-gradient-descent-application" class="section level3">
+<h3>Writing the Stochastic Gradient Descent Application</h3>
+<p>In stochastic gradient descent, the algorithm selects a single observation at random (instead of sweeping through all the cases, in batch gradient descent), from the data set and starts modifying the parameters right away. This process is repeated and the weights modified, till it has worked through the entire data set. It then repeats the above procedure for the number of iterations defined.</p>
+<pre class="r"><code>sgd &lt;- function(x, y, betas, iters, lambda) {
+  beta&lt;-as.matrix(cbind(rep(betas[1], iters),
+                        rep(betas[2], iters),
+                        rep(betas[3],iters))
+                  )
+  for (i in 2:iters) {
+    m &lt;- nrow(x)
+    sample_num &lt;- sample.int(m, 1)
+    row_x &lt;- x[sample_num,]
+    row_y &lt;- y[sample_num]
+    
+    beta[i, 1] &lt;- beta[i-1, 1] - (lambda*(beta[i-1, 1] +
+                                  beta[i-1, 2]*row_x[[1]] +
+                                  beta[i-1, 3]*row_x[[2]] -
+                                  row_y)
+                                  )
+    beta[i, 2] &lt;- beta[i-1, 2] - (lambda*(beta[i-1, 1] +
+                                          beta[i-1, 2]*row_x[[1]] +
+                                          beta[i-1,3]*row_x[[2]] -
+                                          row_y)*row_x[[1]]
+                                  )
+    beta[i, 3] &lt;- beta[i-1,3] - lambda*(beta[i-1, 1] +
+                                        beta[i-1, 2]*row_x[[1]] +
+                                        beta[i-1,3]*row_x[[2]] -
+                                        row_y)*row_x[[2]]
+  }
+  
+  return(beta);
+}</code></pre>
+<p>Let’s apply the above function to our <em>feature_matrix</em> and compare the results with the standard multiple regression function in R</p>
+<pre class="r"><code>betas = c(0, 0, 0)
+iters = 3000
+lambda = 0.0001
+weights = sgd(feature_matrix[, -1],
+              output_matrix,
+              betas,
+              iters = iters,
+              lambda = lambda
+              )</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="center"></th>
+<th align="center">Intercept</th>
+<th align="center">sqft_living</th>
+<th align="center">Bedrooms</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="center">SGD</td>
+<td align="center">0.0028</td>
+<td align="center">0.0704</td>
+<td align="center">0.1802</td>
+</tr>
+<tr class="even">
+<td align="center">lm</td>
+<td align="center">0.0000</td>
+<td align="center">-0.1490</td>
+<td align="center">0.7885</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 

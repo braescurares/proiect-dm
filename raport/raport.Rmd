@@ -27,7 +27,8 @@ $$
 RSS(w) &= \sum_{i=0}^{m} (y^{(i)} - (\sum_{j=0}^{n} w_j x_j^{(i)}))^2 \\
          &= \frac{1}{2m} \sum_{i=0}^{m} (y^{(i)} - h_w(x^{(i)}))^2 \\ 
          &= (y - \boldsymbol{Hw})^T(y - \boldsymbol{Hw}) 
-\end{aligned}$$
+\end{aligned}
+$$
 
 ## 2. Linear Regression as Ordinary Least Squares
 
@@ -48,5 +49,138 @@ RSS &= e^2_1 + e^2_2 + ... + e^2_m \\
 \end{align}
 $$
 
+In order to minimize RSS we will diferentiate with respect to $w_0$ and $w_1$, respectively :
+$$
+\begin{align}
+\frac{\partial{RSS}}{\partial{w_0}} &= \frac{\partial}{\partial{w_0}}\sum_{i=1}^{m}(y_i - \hat{w}_0 - \hat{w}_1x_i)^2\\ &= -2 \sum_{i=1}^{m}(y_1 - w_0 - w_1x_i)
+\end{align}
+$$
+and 
+$$
+\begin{align}
+\frac{\partial{RSS}}{\partial{w_1}} &= \frac{\partial}{\partial{w_1}}\sum_{i=1}^{m}(y_i - \hat{w}_0 - \hat{w}_1x_i)^2\\ &= -2 \sum_{i=1}^{m}x_i(y_1 - w_0 - w_1x_i)
+\end{align}
+$$
+Equating the above equations to zero gives us:
 
+$$
+\begin{align}
+  w_0 &= \frac{\sum_{i=1}^{m}y_i}{m} - w_1\frac{\sum_{i=1}{m}x_i}{m} \\
+  &= \bar{y} - w_1\bar{x} \end{align} 
+$$
+$$
+  0 = \sum_{i=1}^{m}y_ix_i - \sum_{i=1}^{m}w_0x_i - \sum_{i=1}^{m}w_1x_i^2
+$$
+Substituting the value of $w_0$ from the first result will result in :
+
+$$
+w_1 = \frac{\sum_{i=1}^{m}y_ix_i - \frac{\sum_{i=1}^{m}y_i\sum_{i=1}^{m}x_i}{m}}{\sum_{i=1}^{m}x_i^2 - \frac{(\sum_{i=1}^{m}x_i)^2}{m}}
+$$
+In matrix form the equations for $w_0$ and $w_1$ can be combined to arrie at the ordinary least squares (OLS)  regression equation :
+$$
+ w = (X^\top X)^{-1}X^\top Y
+$$
+
+## 3. Linear Regression as Maximum Likelihood
+
+Linear regression can be justified as a maximum likelihood procedure. The estimation of weights as we calculate earlier was to choose a w which would minimize the Mean Squared Error(MSE).
+
+We now look again the linear regression from the point of view of maximum likelihood estimation.
+To derive the linear regression algorithm, we define:
+$$
+p(y | x) = \mathcal{N}(y | \hat y(x,w), \sigma^2)
+$$
+
+The function $\hat y(x,w)$ gives the prediction of the mean of the Gaussian.
+
+We can write the likelihood of the RSS equation as the product of the probabilities :
+
+$$
+\begin{align}
+ \mathcal{L}(p(y | x)) &= \prod_{i=1}^{m} \sqrt{(2\pi\sigma^2)}exp(-\frac{1}{2}\frac{(y_i-wx_i)^2}{\sigma^2}) \\
+ &= (2\pi\sigma^2)^{m/2}exp(-\frac{1}{2\sigma^2}\sum_{i=1}^{m}(y_i - wx_i)^2)
+ \end{align}
+$$
+
+### 4.3 Step-by-Step Batch Gradient Descent
+
+In this procedure, we update the weights with every input
+
+$$
+while\ ||\frac{\partial}{\partial w} RSS(w^{(t)})|| > \nu  \\ 
+for\ features\ in\ j = 0, 1, ..., n \\
+\frac{\partial}{\partial w} RSS(w^{(t)}_j) = - \frac{1}{m} \sum_{i=1}^{m} (y^{(i)} - h_w(x_j^{(i)})) (x_j^{(t)}) \\
+\begin{align}
+w_j^{(t+1)} &\leftarrow w_j^{(t)} - \eta \frac{\partial}{\partial w} RSS(w_j^{(t)}) \\
+w_j^{(t+1)} &\leftarrow w_j^{(t)} + 2\eta H^{\top}(y - Hw^{(t)}) \\
+\eta\ &is\ the\ step\ size
+\end{align}
+$$
+
+The norm of the gradient of the cost is what we try to minimize, by a defined *tolerance* value and is defined as
+
+$$
+||\frac{\partial}{\partial w} RSS(w^{(t)})|| = \sqrt{\frac{\partial}{\partial w}RSS(w_0^{(t)})^2 + \frac{\partial}{\partial w}RSS(w_1^{(t)})^2 + ... + \frac{\partial}{\partial w}RSS(w_m^{(t)})^2}
+$$
+
+### 4.4 Writing the Batch Gradient Descent Application
+
+The *data_matrix* function accepts the selected features and adds the constant column of "ones" and scales the features before returning as a matrix. Scaling the data ensures faster convergence during gradient descent.
+
+```{r, eval=FALSE}
+data_matrix <- function(data, features, output){
+  scaled_feature_matrix <- data.frame(scale(data[features]), row.names=NULL)
+  length <- nrow(data)
+  scaled_features <- as.matrix(cbind('Intercept' = rep(1, length),
+                                    scaled_feature_matrix[, features]
+                                    )
+                              )
+  output <- as.matrix(scale(data[output]))
+  return(list(scaled_features, output))
+}
+```
+
+The *predict_output* function accepts the feature data and a list of "weights" corresponding to each feature and returns the predicted values.
+
+```{r, eval=FALSE}
+predict_output = function(feature_matrix, weights) {
+  predictions = (as.matrix(feature_matrix)) %*% weights
+  return(predictions)
+}
+```
+
+The *featureDerivative* function calculates the gradient of the RSS at each feature.
+
+```{r, eval=FALSE}
+featureDerivative = function(errors, features) {
+  derivative = -1/nrow(features) * (t(features) %*% errors)
+  return(derivative)
+}
+```
+
+This function performs a step-by-step gradient descent and converges if the square
+root of the squared sums of each of the partial gradients is less than the
+defined tolerance. It returns the computed weights for each feature and the number
+of iterations it took to converge.
+
+```{r, eval=FALSE}
+regression_gradient_descent = function(feature_matrix, output,
+  initial_weights, step_size, tolerance) {
+  converged = FALSE
+  weights = initial_weights
+  i = 0
+  while (!converged) {
+    predictions = predict_output(feature_matrix, weights)
+    errors = predictions - output
+    gradient = featureDerivative(errors, feature_matrix)
+    gradient_norm = sqrt(sum(gradient^2))
+    weights = weights + step_size * gradient
+    if (gradient_norm < tolerance) {
+      converged = TRUE
+    }
+    i = i + 1
+  }
+  return(list(weights = weights, Iters = i))
+}
+```
 
